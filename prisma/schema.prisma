@@ -1,13 +1,145 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider = "prisma-client-js"
+}
+
+generator erd {
+  provider = "prisma-erd-generator"
+  output   = "../docs/ERD.svg"
 }
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               Int       @id @default(autoincrement())
+  email            String    @unique
+  passwordHash     String
+  name             String
+  sport            String?
+  position         String?
+  experienceYears  Int?
+  weight           Float?   
+  height           Float?
+  birthDate        DateTime?
+  gender           String?
+  
+  programs         Program[] 
+  sessionLogs      SessionLog[]
+  posts            Post[]
+  comments         Comment[]
+  likes            Like[]
+  savedPrograms    SavedProgram[]
+  chatMessages     ChatMessage[]
+
+  followers        Follows[] @relation("UserFollowers")
+  following        Follows[] @relation("UserFollowing")
+  
+  createdAt        DateTime  @default(now())
+}
+
+model Follows {
+  followerId       Int
+  followingId      Int
+
+  follower         User @relation("UserFollowing", fields: [followerId], references: [id])
+  following        User @relation("UserFollowers", fields: [followingId], references: [id])
+
+  @@id([followerId, followingId]) 
+}
+
+model Program {
+  id               Int       @id @default(autoincrement())
+  title            String
+  sport            String
+  goal             String
+  level            String
+  creatorId        Int
+  isVerified       Boolean   @default(false) 
+  
+  creator          User      @relation(fields: [creatorId], references: [id])
+  sessionLogs      SessionLog[]
+  savedBy          SavedProgram[]
+
+  createdAt        DateTime  @default(now())
+}
+
+model SavedProgram {
+  userId           Int
+  programId        Int
+  status           String    @default("active") // active, completed
+  
+  user             User      @relation(fields: [userId], references: [id])
+  program          Program   @relation(fields: [programId], references: [id])
+
+  @@id([userId, programId])
+}
+
+model SessionLog {
+  id               Int       @id @default(autoincrement())
+  userId           Int
+  programId        Int
+  
+  tTestTime        Float?   
+  verticalJump     Float?    
+  squatReps        Int?
+  videoUrl         String?   
+  
+  user             User      @relation(fields: [userId], references: [id])
+  program          Program   @relation(fields: [programId], references: [id])
+  post             Post?     
+
+  createdAt        DateTime  @default(now())
+}
+
+model Post {
+  id               Int       @id @default(autoincrement())
+  userId           Int
+  content          String?
+  sessionLogId     Int?      @unique 
+  
+  user             User      @relation(fields: [userId], references: [id])
+  sessionLog       SessionLog? @relation(fields: [sessionLogId], references: [id])
+  comments         Comment[]
+  likes            Like[]
+  
+  createdAt        DateTime  @default(now())
+}
+
+
+model Comment {
+  id               Int       @id @default(autoincrement())
+  content          String
+  userId           Int
+  postId           Int
+
+  user             User      @relation(fields: [userId], references: [id])
+  post             Post      @relation(fields: [postId], references: [id])
+
+  createdAt        DateTime  @default(now())
+}
+
+
+model Like {
+  userId           Int
+  postId           Int
+
+  user             User      @relation(fields: [userId], references: [id])
+  post             Post      @relation(fields: [postId], references: [id])
+
+  @@id([userId, postId])
+}
+
+
+model ChatMessage {
+  id               Int       @id @default(autoincrement())
+  userId           Int
+  sender           String   
+  message          String
+  citations        String[] 
+
+  user             User      @relation(fields: [userId], references: [id])
+
+  createdAt        DateTime  @default(now())
 }
